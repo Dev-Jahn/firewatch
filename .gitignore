@@ -1,2 +1,9 @@
 #image
 *.jpg
+*.jpeg
+*.png
+*.JPEG
+*.PNG
+
+#exclude example directory
+example/
