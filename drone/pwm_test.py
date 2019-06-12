@@ -1,7 +1,29 @@
 ﻿import cv2
 import numpy as np
+#from RPi.GPIO as GPIO
 from RPIO import PWM
 import time
+
+#GPIO.setmode(GPIO.BCM)
+
+#roll_pin = 5
+#pitch_pin = 6
+#throttle_pin = 13
+#yaw_pin = 19
+#aux_pin = 26
+
+#GPIO.setup(roll_pin, GPIO.OUT)
+#GPIO.setup(pitch_pin, GPIO.OUT)
+#GPIO.setup(throttle_pin, GPIO.OUT)
+#GPIO.setup(yaw_pin, GPIO.OUT)
+#GPIO.setup(aux_pin, GPIO.OUT)
+
+#roll = GPIO.PWM(roll_pin, 500)             # Aileron
+#pitch = GPIO.PWM(pitch_pin, 500)           # Elevator
+#throttle = GPIO.PWM(throttle_pin, 600)     # Throttle
+#yaw = GPIO.PWM(yaw_pin, 1520)               # Rudder
+#aux = GPIO.PWM(aux_pin, 1010)               # Control Mode
+
 
 # Servo 객체 초기화
 roll = PWM.Servo()      # Aileron
@@ -18,26 +40,26 @@ yaw.set_servo(19,1520)      # pin 35
 aux.set_servo(26,1010)      # pin 37, pin 39 is Ground
 
 # 최대최소값 지정
-#th_min = 1100
-#th_max = 2400
-#r_min = 1100
-#r_max = 1900
-#p_min = 1100
-#p_max = 1900
-#y_min = 1100
-#y_max = 1900
-#a_min = 980
-#a_max = 2300
-#th = 1100
-#r = 1520
-#p = 1520
-#y = 1520
-#a = False
-#th1 = 0
+th_min = 1100
+th_max = 2400
+r_min = 1100
+r_max = 1900
+p_min = 1100
+p_max = 1900
+y_min = 1100
+y_max = 1900
+a_min = 980
+a_max = 2300
+th = 1100
+r = 1520
+p = 1520
+y = 1520
+a = False
+th1 = 0
 
 try:
     while True:
-        string = raw_input ('Enter Command: ')
+        string = input ('Enter Command: ')
         word = string.split()
         word1 = word[0]
         
@@ -45,6 +67,7 @@ try:
             th = 1100
             throttle.set_servo(13,th)
             time.sleep(1)
+            
             yaw.set_servo(19,1100)
             time.sleep(1)
             yaw.set_servo(19,1520)
@@ -176,7 +199,7 @@ try:
 
                         # mapping for NO KEY
                         if k == -1:
-            			    if th1 != th:
+                            if th1 != th:
                                 throttle.set_servo(13,th)
                             else:
                                 pass
@@ -208,7 +231,7 @@ try:
                                 continue
 
                         # mapping for BREAK CONDITION
-                        if (k & 0xFF) == ord('j'):
+                        if (k & 0xFF) == ord('q'):
                             aux.set_servo(26,2300)
                             throttle.set_servo(13,th)
                             roll.set_servo(5,1520)
@@ -223,7 +246,7 @@ try:
                     pass
 
         elif word1 == 'land':
-            while (th > 1000)
+            while (th > 1000):
                 throttle.set_servo(13,th-10)
                 time.sleep(10)
             print('drone has landed')
