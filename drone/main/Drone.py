@@ -1,24 +1,49 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[26]:
+
+
 from MultiWii import MultiWii
+from threading import Thread
 import serial
 import time
 import struct
 import keyboard
+import socket
+
+
+# In[21]:
+
+
+min_command = 1000
+min_throttle = 1100
+
+
+# In[18]:
+
 
 class Drone:
     def __init__(self, serPort = '/dev/ttyUSB0'):
         self.serialPort = serPort
         self.board = MultiWii(self.serialPort)
-        self.curRoll = 0
-        self.curPitch = 0
-        self.curYaw = 0
-        self.curThrottle = 0
+        self.curRoll = 1500
+        self.curPitch = 1500
+        self.curYaw = 1500
+        self.curThrottle = min_command
+
+        data = [1500, 1500, 1500, min_command, 0, 0, 0, 0] # roll, pitch, yaw, throttle
+        data_len = len(data) * 2 # use as short data type
+        self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
+
+
     # Serial Port example
     # /dev/ttyUSB0 ; raspberry pi
     # COM7 ; windows
     
     # windows : devmgmt.msc
     # rasbian : ls /dev/tty*
-    def print_command():
+    def print_command(self):
         print('q/Q : quit')
         print('z/Z : arming')
         print('x/X : disarming')
@@ -37,18 +62,19 @@ class Drone:
 
         while True:
             try:
+                time.sleep(0.05)
                 if keyboard.is_pressed('q'):
                     break
                 elif keyboard.is_pressed('z'):
                     # arming
                     print('Drone Arming started')
-                    print('Drone channel state = [1500, 1500, 2000, 1000]')
+                    print('Drone channel state = [1500, 1500, 2000, 1]')
                     self.arm()
                     print('Drone Arming completed')
                 elif keyboard.is_pressed('x'):
                     # disarming
                     print('Drone Disarming started')
-                    print('Drone channel state = [1500, 1500, 1000, 1000]')
+                    print('Drone channel state = [1500, 1500, 1000, 1]')
                     self.disarm()
                     print('Drone Disarming completed')
                 elif keyboard.is_pressed('w'):
@@ -94,10 +120,14 @@ class Drone:
                 elif keyboard.is_pressed('h'):
                     self.print_command()
                 elif keyboard.is_pressed('r'):
-                    print('Drone reset [1500, 1500, 1500, 1000]')
+                    print('Drone reset [1500, 1500, 1500, 1]')
                     self.reset()
+                #else:
+                    #print('Wrong Command. h or H is help')
                 else:
-                    print('Wrong Command. h or H is help')
+                    data = [self.curRoll, self.curPitch, self.curYaw, self.curThrottle, 0, 0, 0, 0]
+                    data_len = len(data) * 2
+                    self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
             except Exception as error:
                 print('key error : ', str(error))
                 break
@@ -122,10 +152,13 @@ class Drone:
             timer = timer + (time.time() - start)
             start = time.time()
 
+        data = [1500, 1500, 2000, min_throttle]
+        data_len = len(data) * 2
+        self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
         self.curRoll = 1500
         self.curPitch = 1500
-        self.curYaw = 2000
-        self.curThrottle = 1000
+        self.curYaw = 1500
+        self.curThrottle = min_throttle
 
     def disarm(self):
         timer = 0
@@ -138,10 +171,13 @@ class Drone:
             timer = timer + (time.time() - start)
             start = time.time()
 
+        data = [1500, 1500, 1000, min_command]
+        data_len = len(data) * 2
+        self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
         self.curRoll = 1500
         self.curPitch = 1500
-        self.curYaw = 2000
-        self.curThrottle = 1000
+        self.curYaw = 1500
+        self.curThrottle = min_command
 
     def go_forward(self,power = 300):
         if power > 500:
@@ -192,7 +228,7 @@ class Drone:
         data_len = len(data) * 2 # use as short data type
         self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
         self.curPitch = newPitch
-
+    
     def rotate_left_key(self, power = 10):
         newRoll = self.curRoll - power
         if newRoll < 1000:
@@ -285,8 +321,8 @@ class Drone:
     def down(self,power = 300):
         if power > 500:
             power = 500
-        elif power < 0:
-            power = 0
+        elif power < min_command:
+            power = min_command
             
         data = [1500, 1500, 1500, 1500-power] # roll, pitch, yaw, throttle
         data_len = len(data) * 2 # use as short data type
@@ -299,8 +335,8 @@ class Drone:
 
     def down_key(self, power = 10):
         newThrottle = self.curThrottle - power
-        if newThrottle < 1000:
-            newThrottle = 1000
+        if newThrottle < 1:
+            newThrottle = 1
         data = [self.curRoll, self.curPitch, self.curYaw, newThrottle]
         data_len = len(data) * 2 # use as short data type
         self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
@@ -308,14 +344,15 @@ class Drone:
 
     def reset(self):
             
-        data = [1500, 1500, 1500, 1000] # roll, pitch, yaw, throttle
+        data = [1500, 1500, 1500, min_command] # roll, pitch, yaw, throttle
         data_len = len(data) * 2 # use as short data type
+        
         self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
 
         self.curRoll = 1500
         self.curPitch = 1500
         self.curYaw = 1500
-        self.curThrottle = 1000
+        self.curThrottle = min_command
 
     def getData(self, cmd = MultiWii.RC):
         return self.board.getData(cmd)
@@ -418,3 +455,100 @@ class Drone:
     	print('Drone disarming started')
     	self.disarm()
     	print('Drone disarming completed')
+
+
+# In[24]:
+
+
+def change_pitch(self, power):
+    if power < 1000:
+        power = 1000
+    elif power > 2000:
+        power = 2000
+    
+    data = [self.curRoll, power, self.curYaw, self.curThrottle]
+    data_len = len(data) * 2 # use as short data type
+    self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
+    self.curPitch = power
+    
+def change_yaw(self, power):
+    if power < 1000:
+        power = 1000
+    elif power > 2000:
+        power = 2000
+    
+    data = [self.curRoll, self.curPitch, power, self.curThrottle]
+    data_len = len(data) * 2 # use as short data type
+    self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
+    self.curYaw = power
+    
+def change_roll(self, power):
+    if power < 1000:
+        power = 1000
+    elif power > 2000:
+        power = 2000
+    
+    data = [power, self.curPitch, self.curYaw, self.curThrottle]
+    data_len = len(data) * 2 # use as short data type
+    self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
+    self.curRoll = power
+    
+def change_throttle(self, power):
+    if power < 1000:
+        power = 1000
+    elif power > 2000:
+        power = 2000
+    
+    data = [self.curRoll, self.curPitch, self.curYaw, power]
+    data_len = len(data) * 2 # use as short data type
+    self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
+    self.curThrottle = power
+
+
+# In[ ]:
+
+
+def comm_wait(self, sock):
+    while True:
+        data, addr = sock.recvfrom(200)
+        content = data.decode().split(':')
+        
+        operator = content[0]
+        value = int(content[1])
+        
+        if operator == 'ABS_X':
+            # YAW
+            self.change_yaw(value)
+        elif operator == 'ABS_Y':
+            # THROTTLE
+            self.change_throttle(value)
+        elif operator == 'ABS_RX':
+            # ROLL
+            self.change_roll(value)
+        elif operator == 'ABS_RY':
+            # PITCH
+            self.change_pitch(value)
+        elif operator == 'BTN_SOUTH':
+            # ARM
+            self.arm()
+        elif operator == 'BTN_WEST':
+            # DISARM
+            self.disarm()        
+
+
+# In[27]:
+
+
+def comm_controlling(self):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(('192.168.43.143', 6666))
+    
+    t = Thread(target=self.comm_wait, args=(sock,))
+    t.daemon = True
+    t.start()
+    
+    while True:
+        data = [self.curRoll, self.curPitch, self.curYaw, self.curThrottle, 0, 0, 0, 0]
+        data_len = len(data) * 2
+        self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)          
+
