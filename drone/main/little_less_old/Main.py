@@ -5,7 +5,7 @@ import serial
 import time
 import struct
 
-drone = Drone('/dev/ttyUSB0')
+drone = Drone('/dev/ttyUSB1')
 #drone = Drone('COM3')
 
-drone.comm_controlling()
+drone.keyboard_controlling()
