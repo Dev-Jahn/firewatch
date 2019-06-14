@@ -523,34 +523,44 @@ class Drone:
             if operator == 'ABS_X':
                 # YAW
                 self.change_yaw(value)
+                print('yaw changed to ', value)
             elif operator == 'ABS_Y':
                 # THROTTLE
                 self.change_throttle(value)
+                print('throttle changed to ', value)
             elif operator == 'ABS_RX':
                 # ROLL
                 self.change_roll(value)
+                print('roll changed to ', value)
             elif operator == 'ABS_RY':
                 # PITCH
                 self.change_pitch(value)
+                print('pitch changed to ', value)
             elif operator == 'BTN_SOUTH':
                 # ARM
                 if value == BTN_PRESSED:
                     self.arm_condition = True
                     self.arm()
+                    print('arm signal start')
                 elif value == BTN_RELEASED:
                     self.arm_condition = False
+                    print('arm end')
             elif operator == 'BTN_WEST':
                 # DISARM
                 if value == BTN_PRESSED:
                     self.disarm_condition = True
                     self.disarm()
+                    print('disarm signal start')
                 elif value == BTN_RELEASED:
                     self.disarm_condition = False
+                    print('disarm end')
             elif operator == 'BTN_NORTH':
                 if value == BTN_PRESSED:
                     self.stop_condition = True
+                    print('stop signal start')
                 elif value == BTN_RELEASED:
                     self.stop_condition = False
+                    print('stop signal end')
     # In[27]:
 
 
