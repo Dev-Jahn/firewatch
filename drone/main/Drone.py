@@ -566,7 +566,8 @@ class Drone:
 
     def comm_controlling(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.bind(('192.168.43.143', 6666))
+        sock.bind(('127.0.0.1', 6666))
+        #sock.bind(('192.168.43.143', 6666))
 
         t = Thread(target=self.comm_wait, args=(sock,))
         t.daemon = True
