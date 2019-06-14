@@ -61,6 +61,8 @@ class Drone:
         print('k/K : pitch down (go_backward)')
         print('j/J : roll down (left side rotate)')
         print('l/L : roll up (right side rotate)')
+        print('o/O : aux2 hi')
+        print('p/P : aux3 hi')
         print('h/H : command reprint')
 
     def keyboard_controlling(self):
@@ -123,6 +125,10 @@ class Drone:
                     print('Drone roll up (right rotate)')
                     self.rotate_right_key()
                     print('cur Roll is : ', self.curRoll)
+                elif keyboard.is_pressed('o'):
+                    self.send_aux2_hi()
+                elif keyboard.is_pressed('p'):
+                    self.send_aux3_hi()
                 elif keyboard.is_pressed('h'):
                     self.print_command()
                 elif keyboard.is_pressed('r'):
@@ -349,8 +355,7 @@ class Drone:
         self.curThrottle = newThrottle
 
     def reset(self):
-            
-        data = [1500, 1500, 1500, min_command] # roll, pitch, yaw, throttle
+        data = [1500, 1500, 1500, min_command, 0, self.curAux2, self.curAux3, 0] # roll, pitch, yaw, throttle
         data_len = len(data) * 2 # use as short data type
         
         self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
@@ -641,7 +646,72 @@ class Drone:
             if self.arm_condition or self.disarm_condition or self.stop_condition:
                 pass
             else:
-                data = [self.curRoll, self.curPitch, self.curYaw, self.curThrottle, 0, 0, 0, 0]
+                data = [self.curRoll, self.curPitch, self.curYaw, self.curThrottle, 0, self.curAux2, self.curAux3, 0]
                 data_len = len(data) * 2
                 self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
 
+    def test_process(self, data):     
+        content = data.split(:)
+        operator = content[0]
+        value = int(content[1])
+
+        if operator == 'ABS_X':
+            # YAW
+            self.change_yaw(value)
+            print('yaw changed to ', value)
+        elif operator == 'ABS_Y':
+            # THROTTLE
+            self.change_throttle(value)
+            print('throttle changed to ', value)
+        elif operator == 'ABS_RX':
+            # ROLL
+            self.change_roll(value)
+            print('roll changed to ', value)
+        elif operator == 'ABS_RY':
+            # PITCH
+            self.change_pitch(value)
+            print('pitch changed to ', value)
+        elif operator == 'BTN_SOUTH':
+            # ARM
+            if value == BTN_PRESSED:
+                self.arm_condition = True
+                self.arm()
+                print('arm signal start')
+            elif value == BTN_RELEASED:
+                self.arm_condition = False
+                print('arm end')
+        elif operator == 'BTN_WEST':
+            # DISARM
+            if value == BTN_PRESSED:
+                self.disarm_condition = True
+                self.disarm()
+                print('disarm signal start')
+            elif value == BTN_RELEASED:
+                self.disarm_condition = False
+                print('disarm end')
+        elif operator == 'BTN_NORTH':
+            if value == BTN_PRESSED:
+                self.stop_condition = True
+                print('stop signal start')
+            elif value == BTN_RELEASED:
+                self.stop_condition = False
+                print('stop signal end')
+        elif operator == 'BTN_EAST':
+            if value == BTN_PRESSED:
+                self.send_aux2_hi()
+                print('Aux2 is set to hi')
+        elif operator == 'BTN_NORTH':
+            if value == BTN_PRESSED:
+                self.send_aux3_hi()
+                print('Aux3 is set to hi')
+                
+    def test_controlling(self):
+        
+        while True:
+            time.sleep(0.05)
+            if self.arm_condition or self.disarm_condition or self.stop_condition:
+                pass
+            else:
+                data = [self.curRoll, self.curPitch, self.curYaw, self.curThrottle, 0, self.curAux2, self.curAux3, 0]
+                data_len = len(data) * 2
+                self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
