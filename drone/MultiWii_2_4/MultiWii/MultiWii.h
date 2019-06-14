@@ -6,7 +6,6 @@
 #include "types.h"
 #include "Alarms.h"
 
-//#define MINCHECK (MINTHROTTLE + 100)
 #define MINCHECK 1100
 #define MAXCHECK 1900
 

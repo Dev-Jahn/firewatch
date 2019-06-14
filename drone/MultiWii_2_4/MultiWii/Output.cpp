@@ -141,7 +141,7 @@ void writeServos() {
     #if defined(PRI_SERVO_FROM) && !defined(HW_PWM_SERVOS)   // write primary servos
       for(uint8_t i = (PRI_SERVO_FROM-1); i < PRI_SERVO_TO; i++){
         #if defined(PROMINI) || (defined(PROMICRO) && defined(HWPWM6)) || (defined(MEGA) && defined(MEGA_HW_PWM_SERVOS))
-            atomicServo[i] = (servo[i]-1000)>>2;
+          atomicServo[i] = (servo[i]-1000)>>2;
         #else
           atomicServo[i] = (servo[i]-1000)<<4;
         #endif

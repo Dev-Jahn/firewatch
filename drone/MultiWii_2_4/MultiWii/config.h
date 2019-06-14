@@ -59,9 +59,8 @@
     //#define MINTHROTTLE 1300 // for Turnigy Plush ESCs 10A
     //#define MINTHROTTLE 1120 // for Super Simple ESCs 10A
     //#define MINTHROTTLE 1064 // special ESC (simonk)
-    #define MINTHROTTLE 1150 // for brushed ESCs like ladybird
-    //#define MINTHROTTLE 1150 // (*) (**)
-    //#define MINTHROTTLE 1000 // (*) (**)
+    //#define MINTHROTTLE 1050 // for brushed ESCs like ladybird
+    #define MINTHROTTLE 1100 // (*) (**)
 
   /****************************    Motor maxthrottle    *******************************/
     /* this is the maximum value for the ESCs at full power, this value can be increased up to 2000 */
@@ -70,7 +69,7 @@
   /****************************    Mincommand          *******************************/
     /* this is the value for the ESCs when they are not armed
        in some cases, this value must be lowered down to 900 for some specific ESCs, otherwise they failed to initiate */
-    #define MINCOMMAND 0
+    #define MINCOMMAND  1000
 
   /**********************************  I2C speed for old WMP config (useless config for other sensors)  *************/
     //#define I2C_SPEED 100000L     //100kHz normal mode, this value must be used for a genuine WMP
@@ -183,7 +182,7 @@
       //#define MMA8451Q
 
       /* I2C barometer */
-      //#define BMP085
+      #define BMP085
       //#define MS561101BA
 
       /* I2C magnetometer */
@@ -252,9 +251,9 @@
 
     /* if you want to preset min/middle/max values for servos right after flashing, because of limited physical
      * room for servo travel, then you must enable and set all three following options */
-     //#define SERVO_MIN  {1020, 1020, 1020, 200, 1020, 1020, 1020, 1020}
-     //#define  SERVO_MAX {2000, 2000, 2000, 1500, 2000, 2000, 2000, 2000}
-     //#define  SERVO_MID {1500, 1500, 1500, 850, 1500, 1500, 1500, 1500} // (*)
+     //#define SERVO_MIN  {1020, 1020, 1020, 1020, 1020, 1020, 1020, 1020}
+     //#define  SERVO_MAX {2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000}
+     //#define  SERVO_MID {1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500} // (*)
      //#define FORCE_SERVO_RATES      {30,30,100,100,100,100,100,100} // 0 = normal, 1= reverse
 
   /***********************          Cam Stabilisation             ***********************/
@@ -551,7 +550,7 @@ At this moment you can use this function only with WinGUI 2.3 release. MultiWiiC
 
   /************************        Reset Baro altitude on arm         ********************/
   /* When unchecked a calibration of the baro altitude is preformed every time arming is activated */
-  //#define ALTITUDE_RESET_ON_ARM
+  #define ALTITUDE_RESET_ON_ARM
 
   /************************        Angele throttle correction         ********************/
   /* Automatically increase throttle based on the angle of the copter
@@ -599,8 +598,7 @@ At this moment you can use this function only with WinGUI 2.3 release. MultiWiiC
     //#define FAILSAFE                                // uncomment  to activate the failsafe function
     #define FAILSAFE_DELAY     10                     // Guard time for failsafe activation after signal lost. 1 step = 0.1sec - 1sec in example
     #define FAILSAFE_OFF_DELAY 200                    // Time for Landing before motors stop in 0.1sec. 1 step = 0.1sec - 20sec in example
-    #define FAILSAFE_THROTTLE  MINTHROTTLE    // (*) Throttle level used for landing - may be relative to MINTHROTTLE - as in this case
-    //#define FAILSAFE_THROTTLE  (MINTHROTTLE + 200)    // (*) Throttle level used for landing - may be relative to MINTHROTTLE - as in this case
+    #define FAILSAFE_THROTTLE  (MINTHROTTLE + 200)    // (*) Throttle level used for landing - may be relative to MINTHROTTLE - as in this case
     
     #define FAILSAFE_DETECT_TRESHOLD  985
 
@@ -937,7 +935,7 @@ Also note, that maqgnetic declination changes with time, so recheck your value e
     /* defines the neutral zone of throttle stick during altitude hold, default setting is
        +/-50 uncommend and change the value below if you want to change it. */
     #define ALT_HOLD_THROTTLE_NEUTRAL_ZONE    50
-    //#define ALT_HOLD_THROTTLE_MIDPOINT        1500  // in us    - if uncommented, this value is used in ALT_HOLD for throttle stick middle point instead of initialThrottleHold parameter.
+    #define ALT_HOLD_THROTTLE_MIDPOINT        1500  // in us    - if uncommented, this value is used in ALT_HOLD for throttle stick middle point instead of initialThrottleHold parameter.
 
 
     /* uncomment to disable the altitude hold feature.
@@ -1019,7 +1017,7 @@ Also note, that maqgnetic declination changes with time, so recheck your value e
   /**************************************************************************************/
     /* motors will not spin when the throttle command is in low position
        this is an alternative method to stop immediately the motors */
-    #define MOTOR_STOP
+    //#define MOTOR_STOP
 
     /* some radios have not a neutral point centered on 1500. can be changed here */
     #define MIDRC 1500
@@ -1144,8 +1142,7 @@ Also note, that maqgnetic declination changes with time, so recheck your value e
        You cannot fly with this special version. It is only to be used for calibrating ESCs
        Read How To at http://code.google.com/p/multiwii/wiki/ESCsCalibration */
     #define ESC_CALIB_LOW  MINCOMMAND
-    #define ESC_CALIB_HIGH 800
-    //#define ESC_CALIB_HIGH 2000
+    #define ESC_CALIB_HIGH 2000
     //#define ESC_CALIB_CANNOT_FLY  // uncomment to activate
 
   /****           internal frequencies                             ****/
