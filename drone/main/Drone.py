@@ -651,7 +651,7 @@ class Drone:
                 self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
 
     def test_process(self, data):     
-        content = data.split(:)
+        content = data.split(':')
         operator = content[0]
         value = int(content[1])
 
