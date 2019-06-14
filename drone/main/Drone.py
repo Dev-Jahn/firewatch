@@ -35,8 +35,10 @@ class Drone:
         self.arm_condition = False
         self.disarm_condition = False
         self.stop_condition = False
+        self.curAux2 = 2000 # hi for baro mode
+        self.curAux3 = 2000 # hi for angle mode
 
-        data = [1500, 1500, 1500, min_command, 0, 0, 0, 0] # roll, pitch, yaw, throttle
+        data = [self.curRoll, self.curPitch, self.curYaw, min_command, 0, self.curAux2, self.curAux3, 0] # roll, pitch, yaw, throttle
         data_len = len(data) * 2 # use as short data type
         self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
 
@@ -129,7 +131,7 @@ class Drone:
                 #else:
                     #print('Wrong Command. h or H is help')
                 else:
-                    data = [self.curRoll, self.curPitch, self.curYaw, self.curThrottle, 0, 0, 0, 0]
+                    data = [self.curRoll, self.curPitch, self.curYaw, self.curThrottle, 0, self.curAux2, self.curAux3, 0]
                     data_len = len(data) * 2
                     self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
             except Exception as error:
@@ -507,6 +509,58 @@ class Drone:
         data_len = len(data) * 2 # use as short data type
         self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
         self.curThrottle = power
+        
+    def send_aux2(self, mode):
+        if mode == 'lo':
+            self.send_aux2_lo()
+        elif mode == 'mid':
+            self.send_aux2_mid()
+        elif mode == 'hi':
+            self.send_aux2_hi()
+    
+    def send_aux2_lo(self):
+        data = [self.curRoll, self.curPitch, self.curYaw, self.curThrottle, 0, 1000, self.curAux3, 0]
+        data_len = len(data) * 2
+        self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
+        self.curAux2 = 1000
+        
+    def send_aux2_mid(self):
+        data = [self.curRoll, self.curPitch, self.curYaw, self.curThrottle, 0, 1500, self.curAux3, 0]
+        data_len = len(data) * 2
+        self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
+        self.curAux2 = 1500
+    
+    def send_aux2_hi(self):
+        data = [self.curRoll, self.curPitch, self.curYaw, self.curThrottle, 0, 2000, self.curAux3, 0]
+        data_len = len(data) * 2
+        self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
+        self.curAux2 = 2000
+        
+    def send_aux3(self, mode):
+        if mode == 'lo':
+            self.send_aux3_lo()
+        elif mode == 'mid':
+            self.send_aux3_mid()
+        elif mode == 'hi':
+            self.send_aux3_hi()
+    
+    def send_aux3_lo(self):
+        data = [self.curRoll, self.curPitch, self.curYaw, self.curThrottle, 0, self.curAux2, 1000, 0]
+        data_len = len(data) * 2
+        self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
+        self.curAux3 = 1000
+        
+    def send_aux3_mid(self):
+        data = [self.curRoll, self.curPitch, self.curYaw, self.curThrottle, 0, self.curAux2, 1500, 0]
+        data_len = len(data) * 2
+        self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
+        self.curAux3 = 1500
+    
+    def send_aux3_hi(self):
+        data = [self.curRoll, self.curPitch, self.curYaw, self.curThrottle, 0, self.curAux3, 2000, 0]
+        data_len = len(data) * 2
+        self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
+        self.curAux3 = 2000
 
 
     # In[ ]:
@@ -561,6 +615,16 @@ class Drone:
                 elif value == BTN_RELEASED:
                     self.stop_condition = False
                     print('stop signal end')
+            elif operator == 'BTN_EAST':
+                if value == BTN_PRESSED:
+                    self.send_aux2_hi()
+                    print('Aux2 is set to hi')
+            elif operator == 'BTN_NORTH':
+                if value == BTN_PRESSED:
+                    self.send_aux3_hi()
+                    print('Aux3 is set to hi')
+                    
+           
     # In[27]:
 
 
