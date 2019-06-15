@@ -392,7 +392,7 @@ void i2c_BMP085_UT_Start(void) {
 // read uncompensated pressure value: send command first
 void i2c_BMP085_UP_Start () {
   i2c_writeReg(BMP085_ADDRESS,0xf4,0x34+(OSS<<6)); // control register value for oversampling setting 3
-  i2c_rep_start(BMP085_ADDRESS<<1); //I2C write direction => 0
+  i2c_rep_start(BMP085_ADDRESS<<1); //I2C write direction => 0.
   i2c_write(0xF6);
   i2c_stop();
 }
@@ -400,7 +400,7 @@ void i2c_BMP085_UP_Start () {
 // read uncompensated pressure value: read result bytes
 // the datasheet suggests a delay of 25.5 ms (oversampling settings 3) after the send command
 void i2c_BMP085_UP_Read () {
-  i2c_rep_start((BMP085_ADDRESS<<1) | 1);//I2C read direction => 1
+  i2c_rep_start((BMP085_ADDRESS<<1) | 1);//I2C read direction => 1.
   bmp085_ctx.up.raw[2] = i2c_readAck();
   bmp085_ctx.up.raw[1] = i2c_readAck();
   bmp085_ctx.up.raw[0] = i2c_readNak();
@@ -470,6 +470,271 @@ uint8_t Baro_update() {                   // first UT conversion is started in i
   }
 }
 #endif
+
+#if defined(BMP280)
+#define BMP280_I2C_ADDR                      (0x76)
+#define BMP280_DEFAULT_CHIP_ID               (0x58)
+
+#define BMP280_CHIP_ID_REG                   (0xD0)  /* Chip ID Register */
+#define BMP280_RST_REG                       (0xE0)  /* Softreset Register */
+#define BMP280_STAT_REG                      (0xF3)  /* Status Register */
+#define BMP280_CTRL_MEAS_REG                 (0xF4)  /* Ctrl Measure Register */
+#define BMP280_CONFIG_REG                    (0xF5)  /* Configuration Register */
+#define BMP280_PRESSURE_MSB_REG              (0xF7)  /* Pressure MSB Register */
+#define BMP280_PRESSURE_LSB_REG              (0xF8)  /* Pressure LSB Register */
+#define BMP280_PRESSURE_XLSB_REG             (0xF9)  /* Pressure XLSB Register */
+#define BMP280_TEMPERATURE_MSB_REG           (0xFA)  /* Temperature MSB Reg */
+#define BMP280_TEMPERATURE_LSB_REG           (0xFB)  /* Temperature LSB Reg */
+#define BMP280_TEMPERATURE_XLSB_REG          (0xFC)  /* Temperature XLSB Reg */
+#define BMP280_FORCED_MODE                   (0x01)
+#define BMP280_NORMAL_MODE                   (0x03)
+
+#define BMP280_TEMPERATURE_CALIB_DIG_T1_LSB_REG             (0x88)
+#define BMP280_PRESSURE_TEMPERATURE_CALIB_DATA_LENGTH       (24)
+#define BMP280_DATA_FRAME_SIZE               (6)
+
+#define BMP280_OVERSAMP_SKIPPED          (0x00)
+#define BMP280_OVERSAMP_1X               (0x01)
+#define BMP280_OVERSAMP_2X               (0x02)
+#define BMP280_OVERSAMP_4X               (0x03)
+#define BMP280_OVERSAMP_8X               (0x04)
+#define BMP280_OVERSAMP_16X              (0x05)
+
+// configure pressure and temperature oversampling, forced sampling mode
+#define BMP280_PRESSURE_OSR              (BMP280_OVERSAMP_4X)
+#define BMP280_TEMPERATURE_OSR           (BMP280_OVERSAMP_1X)
+#define BMP280_MODE                      (BMP280_PRESSURE_OSR << 2 | BMP280_TEMPERATURE_OSR << 5 | BMP280_NORMAL_MODE)
+
+// Config values
+// t_sb[1:0] according to t_standby(ms)
+#define BMP280_TSTBY_0p5 			(0x0)
+#define BMP280_TSTBY_62p5 			(0x1)
+#define BMP280_TSTBY_125 			(0x2)
+#define BMP280_TSTBY_250 			(0x3)
+#define BMP280_TSTBY_500 			(0x4)
+#define BMP280_TSTBY_1000 			(0x5)
+#define BMP280_TSTBY_2000 			(0x6)
+#define BMP280_TSTBY_4000 			(0x7)
+// IIR filter (Not sure for bitfield coding)
+#define BMP280_IIR_OFF				(0x0)
+#define BMP280_IIR_2				(0x1)
+#define BMP280_IIR_4				(0x2)
+#define BMP280_IIR_8				(0x3)
+#define BMP280_IIR_16				(0x4)
+
+#define BMP280_CONFIG				(BMP280_TSTBY_0p5 << 5 | BMP280_IIR_16 << 2)
+
+#define T_INIT_MAX                       (20)
+// 20/16 = 1.25 ms
+#define T_MEASURE_PER_OSRS_MAX           (37)
+// 37/16 = 2.3125 ms
+#define T_SETUP_PRESSURE_MAX             (10)
+// 10/16 = 0.625 ms
+
+static struct {
+  uint8_t  state;
+  uint16_t ut_delay;
+  uint16_t up_delay;
+  uint32_t deadline;
+} bmp280_ctx;  
+
+
+typedef struct bmp280_calib_param_t {
+    uint16_t dig_T1; /* calibration T1 data */
+    int16_t dig_T2; /* calibration T2 data */
+    int16_t dig_T3; /* calibration T3 data */
+    uint16_t dig_P1; /* calibration P1 data */
+    int16_t dig_P2; /* calibration P2 data */
+    int16_t dig_P3; /* calibration P3 data */
+    int16_t dig_P4; /* calibration P4 data */
+    int16_t dig_P5; /* calibration P5 data */
+    int16_t dig_P6; /* calibration P6 data */
+    int16_t dig_P7; /* calibration P7 data */
+    int16_t dig_P8; /* calibration P8 data */
+    int16_t dig_P9; /* calibration P9 data */
+    int32_t t_fine; /* calibration t_fine data */
+} bmp280_calib_param_t;
+
+static uint8_t bmp280_chip_id = 0;
+static bool bmp280InitDone = false;
+static bmp280_calib_param_t bmp280_cal;
+// uncompensated pressure and temperature
+static int32_t bmp280_up = 0;
+static int32_t bmp280_ut = 0;
+
+static void bmp280_start_up(void);
+static void bmp280_get_up(void);
+static void bmp280_calculate(int32_t *pressure, int32_t *temperature);
+
+bool bmp280Detect()
+{
+    if (bmp280InitDone)
+        return true;
+
+    delay(20);
+
+    i2c_read_reg_to_buf(BMP280_I2C_ADDR, BMP280_CHIP_ID_REG, &bmp280_chip_id,1);  /* read Chip Id */
+    if (bmp280_chip_id != BMP280_DEFAULT_CHIP_ID)
+        return false;
+
+    // read calibration
+    i2c_read_reg_to_buf(BMP280_I2C_ADDR, BMP280_TEMPERATURE_CALIB_DIG_T1_LSB_REG, (uint8_t *)&bmp280_cal, 24);
+    // set oversampling + power mode (forced), and start sampling
+    i2c_writeReg(BMP280_I2C_ADDR, BMP280_CTRL_MEAS_REG, BMP280_MODE);
+    i2c_writeReg(BMP280_I2C_ADDR, BMP280_CONFIG_REG, BMP280_CONFIG);
+
+    bmp280InitDone = true;
+
+    // these are dummy as temperature is measured as part of pressure
+    bmp280_ctx.ut_delay = 0;
+
+    // only _up part is executed, and gets both temperature and pressure
+    bmp280_ctx.up_delay = 12100;
+    //bmp280_ctx.up_delay = ((T_INIT_MAX + T_MEASURE_PER_OSRS_MAX * (((1 << BMP280_TEMPERATURE_OSR) >> 1) + ((1 << BMP280_PRESSURE_OSR) >> 1)) + (BMP280_PRESSURE_OSR ? T_SETUP_PRESSURE_MAX : 0) + 15) / 16) * 1000;
+
+    return true;
+}
+
+static void bmp280_start_up(void)
+{
+    // start measurement
+    // set oversampling + power mode (forced), and start sampling
+    i2c_writeReg(BMP280_I2C_ADDR, BMP280_CTRL_MEAS_REG, BMP280_MODE);
+}
+
+static void bmp280_get_up(void)
+{
+    uint8_t data[BMP280_DATA_FRAME_SIZE];
+
+    // read data from sensor
+    i2c_read_reg_to_buf(BMP280_I2C_ADDR, BMP280_PRESSURE_MSB_REG, BMP280_DATA_FRAME_SIZE, data);
+    bmp280_up = (int32_t)((((uint32_t)(data[0])) << 12) | (((uint32_t)(data[1])) << 4) | ((uint32_t)data[2] >> 4));
+    bmp280_ut = (int32_t)((((uint32_t)(data[3])) << 12) | (((uint32_t)(data[4])) << 4) | ((uint32_t)data[5] >> 4));
+}
+
+// Returns temperature in DegC, resolution is 0.01 DegC. Output value of “5123”equals 51.23 DegC.
+// t_fine carries fine temperature as global value
+int32_t t_fine;
+int32_t bmp280_compensate_T(int32_t adc_T)
+{
+	int32_t var1, var2, T;
+	var1  = ((((adc_T>>3) –((int32_t)dig_T1<<1))) * ((int32_t)dig_T2)) >> 11;
+	var2  = (((((adc_T>>4) –((int32_t)dig_T1)) * ((adc_T>>4) –((int32_t)dig_T1))) >> 12) * ((int32_t)dig_T3)) >> 14;
+	t_fine = var1 + var2;
+	T  = (t_fine * 5 + 128) >> 8;
+	return T;
+}
+// Returns pressure in Pa as unsigned 32 bit integer in Q24.8 format (24 integer bits and 8 fractional bits).
+// Output value of “24674867”represents 24674867/256 = 96386.2 Pa = 963.862 hPa
+uint32_t bmp280_compensate_P(int32_t adc_P)
+{
+	int64_t var1, var2, p;
+	var1 = ((int64_t)t_fine) –128000;
+	var2 = var1 * var1 * (int64_t)dig_P6;
+	var2 = var2 + ((var1*(int64_t)dig_P5)<<17);
+	var2 = var2 + (((int64_t)dig_P4)<<35);
+	var1 = ((var1 * var1 * (int64_t)dig_P3)>>8) + ((var1 * (int64_t)dig_P2)<<12);
+	var1 = (((((int64_t)1)<<47)+var1))*((int64_t)dig_P1)>>33;
+	if(var1 == 0)
+	{
+		return0; // avoid exception caused by division by zero
+	}
+	p = 1048576-adc_P;
+	p = (((p<<31)-var2)*3125)/var1;
+	var1 = (((int64_t)dig_P9) * (p>>13) * (p>>13)) >> 25;
+	var2 = (((int64_t)dig_P8) * p) >> 19;
+	p= ((p + var1 + var2) >> 8) + (((int64_t)dig_P7)<<4);
+	return(uint32_t)p;
+}
+
+/*
+// Returns temperature in DegC, float precision. Output value of “51.23” equals 51.23 DegC.
+// t_fine carries fine temperature as global value
+float bmp280_compensate_T(int32_t adc_T)
+{
+    float var1, var2, T;
+
+    var1 = (((float)adc_T) / 16384.0f - ((float)bmp280_cal.dig_T1) / 1024.0f) * ((float)bmp280_cal.dig_T2);
+    var2 = ((((float)adc_T) / 131072.0f - ((float)bmp280_cal.dig_T1) / 8192.0f) * (((float)adc_T) / 131072.0f - ((float)bmp280_cal.dig_T1) / 8192.0f)) * ((float)bmp280_cal.dig_T3);
+    bmp280_cal.t_fine = (int32_t)(var1 + var2);
+    T = (var1 + var2) / 5120.0f;
+
+    return T;
+}
+
+// Returns pressure in Pa as float. Output value of “96386.2” equals 96386.2 Pa = 963.862 hPa
+float bmp280_compensate_P(int32_t adc_P)
+{
+    float var1, var2, p;
+    var1 = ((float)bmp280_cal.t_fine / 2.0f) - 64000.0f;
+    var2 = var1 * var1 * ((float)bmp280_cal.dig_P6) / 32768.0f;
+    var2 = var2 + var1 * ((float)bmp280_cal.dig_P5) * 2.0f;
+    var2 = (var2 / 4.0f) + (((float)bmp280_cal.dig_P4) * 65536.0f);
+    var1 = (((float)bmp280_cal.dig_P3) * var1 * var1 / 524288.0f + ((float)bmp280_cal.dig_P2) * var1) / 524288.0f;
+    var1 = (1.0f + var1 / 32768.0f) * ((float)bmp280_cal.dig_P1);
+    if (var1 == 0.0f)
+        return 0.0f; // avoid exception caused by division by zero
+
+    p = 1048576.0f - (float)adc_P;
+    p = (p - (var2 / 4096.0f)) * 6250.0f / var1;
+    var1 = ((float)bmp280_cal.dig_P9) * p * p / 2147483648.0f;
+    var2 = p * ((float)bmp280_cal.dig_P8) / 32768.0f;
+    p = p + (var1 + var2 + ((float)bmp280_cal.dig_P7)) / 16.0f;
+
+    return p;
+}*/
+
+static void bmp280_calculate(int32_t *pressure, int16_t *temperature)
+{
+    // calculate
+	
+    int32_t t;
+    uint32_t p;
+    t = bmp280_compensate_T(bmp280_ut);
+    p = bmp280_compensate_P(bmp280_up);
+
+    if (pressure)
+       *pressure = (int32_t)p;
+    if (temperature)
+        *temperature = (int16_t)t * 100;
+}
+
+void  Baro_init() {
+  delay(10);
+  bmp280Detect();
+  delay(10);
+  //bmp280_start_ut();
+  bmp280_ctx.deadline = currentTime;
+  //bmp280_ctx.deadline = currentTime+5000;
+}
+
+//return 0: no data available, no computation ;  1: new value available  ; 2: no new value, but computation time
+uint8_t Baro_update() {                   // first UT conversion is started in init procedure
+  if (currentTime < bmp280_ctx.deadline)
+	return 0; 
+
+  //조정
+  bmp280_ctx.deadline = currentTime; // 1.5ms margin according to the spec (4.5ms T convetion time)
+
+  //bmp280_ctx.deadline = currentTime+6000; // 1.5ms margin according to the spec (4.5ms T convetion time)
+  if (bmp280_ctx.state == 0) {
+	bmp280_start_up();
+    Baro_Common();
+    bmp280_ctx.state = 1; 
+	//조정
+    bmp280_ctx.deadline += bmp280_ctx.up_delay;
+    return 1;
+  } else {
+	bmp280_get_up();
+	bmp280_calculate(&baroPressure,&baroTemperature);
+    bmp280_ctx.state = 0; 
+    return 2;
+  }
+}
+
+#endif
+
+
 
 // ************************************************************************************************************
 // I2C Barometer MS561101BA

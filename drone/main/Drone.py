@@ -35,8 +35,8 @@ class Drone:
         self.arm_condition = False
         self.disarm_condition = False
         self.stop_condition = False
-        self.curAux2 = 2000 # hi for baro mode
-        self.curAux3 = 2000 # hi for angle mode
+        self.curAux2 = 0 # hi for baro mode
+        self.curAux3 = 0 # hi for angle mode
 
         data = [self.curRoll, self.curPitch, self.curYaw, min_command, 0, self.curAux2, self.curAux3, 0] # roll, pitch, yaw, throttle
         data_len = len(data) * 2 # use as short data type
@@ -73,6 +73,8 @@ class Drone:
                 time.sleep(0.05)
                 if keyboard.is_pressed('q'):
                     break
+                elif keyboard.is_pressed('.'):
+                    print(self.getData())
                 elif keyboard.is_pressed('z'):
                     # arming
                     print('Drone Arming started')
@@ -157,7 +159,7 @@ class Drone:
         timer = 0
         start = time.time()
         while timer < 0.5:
-            data = [1500, 1500, 2000, 1000] # roll, pitch, yaw, throttle
+            data = [1500, 1500, 2000, 1000, 1000, 1000, 1000, 1000]
             data_len = len(data) * 2 # use as short data type
             self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
             time.sleep(0.05)
