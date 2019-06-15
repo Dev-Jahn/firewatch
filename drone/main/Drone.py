@@ -505,7 +505,8 @@ class Drone:
         while True:
             
             cur_time = time.time()
-            if self.arm_condition == True and ( self.stop_condition == True or (cur_time - self.last_comm_time) < 0.1 ):
+            #if self.arm_condition == True and ( self.stop_condition == True or (cur_time - self.last_comm_time) < 0.1 ):
+            if self.stop_condition == True:
                 self.fail_condition = True
                 self.do_failsafe()
                 
@@ -595,7 +596,8 @@ class Drone:
 
         while True:
             time.sleep(0.05)
-            
+            if self.aux3_toggle == Drone.TOGGLE_ON:
+                print(self.getData()) 
             if self.arm_condition or self.disarm_condition or self.stop_condition:
                 pass
             
@@ -605,7 +607,7 @@ class Drone:
                 self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
 
                 
-    def do_failsafe(self, accel = 0.98):
+    def do_failsafe(self, accel = 0.97):
         if self.fail_condition == False:
             return None
         
@@ -613,6 +615,7 @@ class Drone:
         print('current accel : ', accel)
         
         hovering_throttle = 1600
+        self.change_throttle(hovering_throttle)
         step = 1
         self.send_aux3_lo() # turn off the baro mode by force
         
@@ -630,6 +633,8 @@ class Drone:
             start = time.time()
             while timer < 3:
                 self.change_throttle(newThrottle)
+                timer = timer + (time.time() - start)
+                start = time.time()
             timer = 0
             step += 1
             if self.curThrottle <= Drone.MIN_THROTTLE:
