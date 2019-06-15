@@ -37,6 +37,7 @@ class Drone:
         self.last_comm_time = 0
         self.curAux2 = 1000 # init for angle mode
         self.curAux3 = 1000 # init for baro mode
+        self.disable_failsafe = True
         
         self.aux2_toggle = 0
         self.aux3_toggle = 0
@@ -168,6 +169,7 @@ class Drone:
         timer = 0
         start = time.time()
         while timer < 0.5:
+            self.last_comm_time = time.time()
             data = [1500, 1500, 2000, 1000, 0, 1000, 1000, 0] # roll, pitch, yaw, throttle
             data_len = len(data) * 2 # use as short data type
             self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
@@ -189,12 +191,15 @@ class Drone:
         self.fail_condition = False
         self.aux2_toggle = Drone.TOGGLE_OFF
         self.aux3_toggle = Drone.TOGGLE_OFF
+        self.disable_failsafe = False
 
 
     def disarm(self):
         timer = 0
         start = time.time()
+        self.disable_failsafe = True
         while timer < 0.5:
+            self.last_comm_time = time.time()
             data = [1500, 1500, 1000, 1000, 1000, 1000, 1000, 1000] # roll, pitch, yaw, throttle
             data_len = len(data) * 2 # use as short data type
             self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
@@ -504,12 +509,6 @@ class Drone:
     def comm_wait(self, sock):
         while True:
             
-            cur_time = time.time()
-            #if self.arm_condition == True and ( self.stop_condition == True or (cur_time - self.last_comm_time) < 0.1 ):
-            if self.stop_condition == True:
-                self.fail_condition = True
-                self.do_failsafe()
-                
             data, addr = sock.recvfrom(200)
             content = data.decode()
             
@@ -595,10 +594,24 @@ class Drone:
         t.start()
 
         while True:
+
+            cur_time = time.time()
+            if self.stop_condition == True and self.disable_failsafe == False:
+                self.fail_condition = True
+                self.do_failsafe()
+            if not self.last_comm_time == 0 and self.disable_failsafe == False:
+                if cur_time - self.last_comm_time > 0.1:
+                    print(self.last_comm_time)
+                    print(cur_time)
+                    self.fail_condition = True
+                    self.stop_condition = True
+                    self.do_failsafe()
+
+
             time.sleep(0.05)
             if self.aux3_toggle == Drone.TOGGLE_ON:
                 print(self.getData()) 
-            if self.arm_condition or self.disarm_condition or self.stop_condition:
+            if self.fail_condition or self.arm_condition or self.disarm_condition or self.stop_condition:
                 pass
             
             else:
@@ -614,7 +627,7 @@ class Drone:
         print('failsafe mode is on')
         print('current accel : ', accel)
         
-        hovering_throttle = 1600
+        hovering_throttle = 1300
         self.change_throttle(hovering_throttle)
         step = 1
         self.send_aux3_lo() # turn off the baro mode by force
@@ -642,5 +655,8 @@ class Drone:
 
         print('failsafe mode last step ', step, ' : throttle is min throttle now')
         print('failsafe last step ----- disarm start')
+        self.fail_condition = False
+        self.disarm()
+        self.disarm()
         self.disarm()
         print('failsafe completed ----- disarm completed')
