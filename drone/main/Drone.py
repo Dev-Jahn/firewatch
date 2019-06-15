@@ -503,6 +503,12 @@ class Drone:
 
     def comm_wait(self, sock):
         while True:
+            
+            cur_time = time.time()
+            if self.arm_condition == True and ( self.stop_condition == True or (cur_time - self.last_comm_time) < 0.1 ):
+                self.fail_condition = True
+                self.do_failsafe()
+                
             data, addr = sock.recvfrom(200)
             content = data.decode()
             
@@ -590,11 +596,6 @@ class Drone:
         while True:
             time.sleep(0.05)
             
-            cur_time = time.time()
-            if (cur_time - self.last_comm_time) < 0.1 or self.stop_condition == True:
-                self.fail_condition = True
-                self.do_failsafe()
-            
             if self.arm_condition or self.disarm_condition or self.stop_condition:
                 pass
             
@@ -628,7 +629,7 @@ class Drone:
             print('failsafe mode step ', step, ' : throttle down to ', newThrottle)
             start = time.time()
             while timer < 3:
-                self.changeThrottle(newThrottle)
+                self.change_throttle(newThrottle)
             timer = 0
             step += 1
             if self.curThrottle <= Drone.MIN_THROTTLE:
