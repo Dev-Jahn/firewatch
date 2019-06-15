@@ -472,6 +472,9 @@ uint8_t Baro_update() {                   // first UT conversion is started in i
 #endif
 
 #if defined(BMP280)
+
+#define BOSCH_DEFAULT
+
 #define BMP280_I2C_ADDR                      (0x76)
 #define BMP280_DEFAULT_CHIP_ID               (0x58)
 
@@ -566,6 +569,7 @@ static void bmp280_start_up(void);
 static void bmp280_get_up(void);
 static void bmp280_calculate(int32_t *pressure, int32_t *temperature);
 
+
 bool bmp280Detect()
 {
     if (bmp280InitDone)
@@ -581,7 +585,7 @@ bool bmp280Detect()
     i2c_read_reg_to_buf(BMP280_I2C_ADDR, BMP280_TEMPERATURE_CALIB_DIG_T1_LSB_REG, (uint8_t *)&bmp280_cal, 24);
     // set oversampling + power mode (forced), and start sampling
     i2c_writeReg(BMP280_I2C_ADDR, BMP280_CTRL_MEAS_REG, BMP280_MODE);
-    i2c_writeReg(BMP280_I2C_ADDR, BMP280_CONFIG_REG, BMP280_CONFIG);
+    i2c_writeReg(BMP280_I2C_ADDR, BMP280_CONFIG_REG, BMP280_CONFIG); 
 
     bmp280InitDone = true;
 
@@ -589,7 +593,7 @@ bool bmp280Detect()
     bmp280_ctx.ut_delay = 0;
 
     // only _up part is executed, and gets both temperature and pressure
-    bmp280_ctx.up_delay = 12100;
+    bmp280_ctx.up_delay = 12100; // by archslave
     //bmp280_ctx.up_delay = ((T_INIT_MAX + T_MEASURE_PER_OSRS_MAX * (((1 << BMP280_TEMPERATURE_OSR) >> 1) + ((1 << BMP280_PRESSURE_OSR) >> 1)) + (BMP280_PRESSURE_OSR ? T_SETUP_PRESSURE_MAX : 0) + 15) / 16) * 1000;
 
     return true;
@@ -607,47 +611,52 @@ static void bmp280_get_up(void)
     uint8_t data[BMP280_DATA_FRAME_SIZE];
 
     // read data from sensor
-    i2c_read_reg_to_buf(BMP280_I2C_ADDR, BMP280_PRESSURE_MSB_REG, BMP280_DATA_FRAME_SIZE, data);
+    //i2c_read_reg_to_buf(BMP280_I2C_ADDR, BMP280_PRESSURE_MSB_REG, BMP280_DATA_FRAME_SIZE, data);
+    i2c_read_reg_to_buf(BMP280_I2C_ADDR, BMP280_PRESSURE_MSB_REG, data, BMP280_DATA_FRAME_SIZE);
     bmp280_up = (int32_t)((((uint32_t)(data[0])) << 12) | (((uint32_t)(data[1])) << 4) | ((uint32_t)data[2] >> 4));
     bmp280_ut = (int32_t)((((uint32_t)(data[3])) << 12) | (((uint32_t)(data[4])) << 4) | ((uint32_t)data[5] >> 4));
 }
 
 // Returns temperature in DegC, resolution is 0.01 DegC. Output value of “5123”equals 51.23 DegC.
 // t_fine carries fine temperature as global value
+
+#if defined(BOSCH_DEFAULT)
 int32_t t_fine;
-int32_t bmp280_compensate_T(int32_t adc_T)
+float bmp280_compensate_T(int32_t adc_T)
 {
 	int32_t var1, var2, T;
-	var1  = ((((adc_T>>3) –((int32_t)dig_T1<<1))) * ((int32_t)dig_T2)) >> 11;
-	var2  = (((((adc_T>>4) –((int32_t)dig_T1)) * ((adc_T>>4) –((int32_t)dig_T1))) >> 12) * ((int32_t)dig_T3)) >> 14;
+	var1  = ((((adc_T>>3) -((int32_t)bmp280_cal.dig_T1<<1))) * ((int32_t)bmp280_cal.dig_T2)) >> 11;
+	var2  = (((((adc_T>>4) -((int32_t)bmp280_cal.dig_T1)) * ((adc_T>>4) -((int32_t)bmp280_cal.dig_T1))) >> 12) * ((int32_t)bmp280_cal.dig_T3)) >> 14;
 	t_fine = var1 + var2;
 	T  = (t_fine * 5 + 128) >> 8;
-	return T;
+	return (float)T/100.0f;
 }
 // Returns pressure in Pa as unsigned 32 bit integer in Q24.8 format (24 integer bits and 8 fractional bits).
 // Output value of “24674867”represents 24674867/256 = 96386.2 Pa = 963.862 hPa
-uint32_t bmp280_compensate_P(int32_t adc_P)
+float bmp280_compensate_P(int32_t adc_P)
 {
 	int64_t var1, var2, p;
-	var1 = ((int64_t)t_fine) –128000;
-	var2 = var1 * var1 * (int64_t)dig_P6;
-	var2 = var2 + ((var1*(int64_t)dig_P5)<<17);
-	var2 = var2 + (((int64_t)dig_P4)<<35);
-	var1 = ((var1 * var1 * (int64_t)dig_P3)>>8) + ((var1 * (int64_t)dig_P2)<<12);
-	var1 = (((((int64_t)1)<<47)+var1))*((int64_t)dig_P1)>>33;
+	var1 = ((int64_t)t_fine)-128000;
+	var2 = var1 * var1 * (int64_t)bmp280_cal.dig_P6;
+	var2 = var2 + ((var1*(int64_t)bmp280_cal.dig_P5)<<17);
+	var2 = var2 + (((int64_t)bmp280_cal.dig_P4)<<35);
+	var1 = ((var1 * var1 * (int64_t)bmp280_cal.dig_P3)>>8) + ((var1 * (int64_t)bmp280_cal.dig_P2)<<12);
+	var1 = (((((int64_t)1)<<47)+var1))*((int64_t)bmp280_cal.dig_P1)>>33;
 	if(var1 == 0)
 	{
-		return0; // avoid exception caused by division by zero
+		return 0; // avoid exception caused by division by zero
 	}
 	p = 1048576-adc_P;
 	p = (((p<<31)-var2)*3125)/var1;
-	var1 = (((int64_t)dig_P9) * (p>>13) * (p>>13)) >> 25;
-	var2 = (((int64_t)dig_P8) * p) >> 19;
-	p= ((p + var1 + var2) >> 8) + (((int64_t)dig_P7)<<4);
-	return(uint32_t)p;
+	var1 = (((int64_t)bmp280_cal.dig_P9) * (p>>13) * (p>>13)) >> 25;
+	var2 = (((int64_t)bmp280_cal.dig_P8) * p) >> 19;
+	p= ((p + var1 + var2) >> 8) + (((int64_t)bmp280_cal.dig_P7)<<4);
+	//return (float)(1000*100);
+	return (float)p/256;
 }
+#endif
 
-/*
+#if defined(BASEFLIGHT)
 // Returns temperature in DegC, float precision. Output value of “51.23” equals 51.23 DegC.
 // t_fine carries fine temperature as global value
 float bmp280_compensate_T(int32_t adc_T)
@@ -682,14 +691,14 @@ float bmp280_compensate_P(int32_t adc_P)
     p = p + (var1 + var2 + ((float)bmp280_cal.dig_P7)) / 16.0f;
 
     return p;
-}*/
+}
+#endif
 
 static void bmp280_calculate(int32_t *pressure, int16_t *temperature)
 {
     // calculate
 	
-    int32_t t;
-    uint32_t p;
+	float t,p;
     t = bmp280_compensate_T(bmp280_ut);
     p = bmp280_compensate_P(bmp280_up);
 
@@ -714,7 +723,7 @@ uint8_t Baro_update() {                   // first UT conversion is started in i
 	return 0; 
 
   //조정
-  bmp280_ctx.deadline = currentTime; // 1.5ms margin according to the spec (4.5ms T convetion time)
+  bmp280_ctx.deadline = currentTime + 1500; // 1.5ms margin according to the spec (4.5ms T convetion time)
 
   //bmp280_ctx.deadline = currentTime+6000; // 1.5ms margin according to the spec (4.5ms T convetion time)
   if (bmp280_ctx.state == 0) {
