@@ -13,20 +13,23 @@ import keyboard
 import socket
 
 class Drone:
+    
+    MIN_COMMAND = 1000
+    MIN_THROTTLE = 1100
+    BTN_PRESSED = 1
+    BTN_RELEASED = 0
+    TOGGLE_ON = 1
+    TOGGLE_OFF = 0
+    
     def __init__(self, serPort = '/dev/ttyUSB0'):
-        MIN_COMMAND = 1000
-        MIN_THROTTLE = 1100
-        BTN_PRESSED = 1
-        BTN_RELEASED = 0
-        TOGGLE_ON = 1
-        TOGGLE_OFF = 0
+
 
         self.serialPort = serPort
         self.board = MultiWii(self.serialPort)
         self.curRoll = 1500
         self.curPitch = 1500
         self.curYaw = 1500
-        self.curThrottle = MIN_COMMAND
+        self.curThrottle = Drone.MIN_COMMAND
         self.arm_condition = False
         self.disarm_condition = False
         self.stop_condition = False
@@ -38,7 +41,7 @@ class Drone:
         self.aux2_toggle = 0
         self.aux3_toggle = 0
 
-        data = [self.curRoll, self.curPitch, self.curYaw, MIN_COMMAND, 0, self.curAux2, self.curAux3, 0] # roll, pitch, yaw, throttle
+        data = [self.curRoll, self.curPitch, self.curYaw, Drone.MIN_COMMAND, 0, self.curAux2, self.curAux3, 0] # roll, pitch, yaw, throttle
         data_len = len(data) * 2 # use as short data type
         self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
 
@@ -172,20 +175,20 @@ class Drone:
             timer = timer + (time.time() - start)
             start = time.time()
 
-        data = [1500, 1500, 1500, MIN_THROTTLE, 0, 0, 0, 0]
+        data = [1500, 1500, 1500, Drone.MIN_THROTTLE, 0, 0, 0, 0]
         data_len = len(data) * 2
         self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
         self.curRoll = 1500
         self.curPitch = 1500
         self.curYaw = 1500
-        self.curThrottle = MIN_THROTTLE
+        self.curThrottle = Drone.MIN_THROTTLE
         self.last_comm_time = time.time()
         self.arm_condition = False
         self.disarm_condition = False
         self.stop_condition = False
         self.fail_condition = False
-        self.aux2_toggle = TOGGLE_OFF
-        self.aux3_toggle = TOGGLE_OFF
+        self.aux2_toggle = Drone.TOGGLE_OFF
+        self.aux3_toggle = Drone.TOGGLE_OFF
 
 
     def disarm(self):
@@ -199,20 +202,20 @@ class Drone:
             timer = timer + (time.time() - start)
             start = time.time()
 
-        data = [1500, 1500, 1500, MIN_COMMAND, 0, 1500, 1500, 0]
+        data = [1500, 1500, 1500, Drone.MIN_COMMAND, 0, 1500, 1500, 0]
         data_len = len(data) * 2
         self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
         self.curRoll = 1500
         self.curPitch = 1500
         self.curYaw = 1500
-        self.curThrottle = MIN_COMMAND
+        self.curThrottle = Drone.MIN_COMMAND
         self.last_comm_time = 0
         self.arm_condition = False
         self.disarm_condition = False
         self.stop_condition = False
         self.fail_condition = False
-        self.aux2_toggle = TOGGLE_OFF
-        self.aux3_toggle = TOGGLE_OFF
+        self.aux2_toggle = Drone.TOGGLE_OFF
+        self.aux3_toggle = Drone.TOGGLE_OFF
 
 
     def go_forward(self,power = 300):
@@ -387,7 +390,7 @@ class Drone:
         self.curRoll = 1500
         self.curPitch = 1500
         self.curYaw = 1500
-        self.curThrottle = MIN_COMMAND
+        self.curThrottle = Drone.MIN_COMMAND
 
     def getData(self, cmd = MultiWii.RC):
         return self.board.getData(cmd)
@@ -426,8 +429,8 @@ class Drone:
         self.curRoll = power
 
     def change_throttle(self, power):
-        if power < MIN_THROTTLE:
-            power = MIN_THROTTLE
+        if power < Drone.MIN_THROTTLE:
+            power = Drone.MIN_THROTTLE
         elif power > 2000:
             power = 2000
 
@@ -449,21 +452,21 @@ class Drone:
         data_len = len(data) * 2
         self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
         self.curAux2 = 1000
-        self.aux2_toggle = TOGGLE_OFF
+        self.aux2_toggle = Drone.TOGGLE_OFF
         
     def send_aux2_mid(self):
         data = [self.curRoll, self.curPitch, self.curYaw, self.curThrottle, 0, 1500, self.curAux3, 0]
         data_len = len(data) * 2
         self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
         self.curAux2 = 1500
-        self.aux2_toggle = TOGGLE_OFF
+        self.aux2_toggle = Drone.TOGGLE_OFF
     
     def send_aux2_hi(self):
         data = [self.curRoll, self.curPitch, self.curYaw, self.curThrottle, 0, 2000, self.curAux3, 0]
         data_len = len(data) * 2
         self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
         self.curAux2 = 2000
-        self.aux2_toggle = TOGGLE_ON
+        self.aux2_toggle = Drone.TOGGLE_ON
         
     def send_aux3(self, mode):
         if mode == 'lo':
@@ -478,21 +481,21 @@ class Drone:
         data_len = len(data) * 2
         self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
         self.curAux3 = 1000
-        self.aux3_toggle = TOGGLE_OFF
+        self.aux3_toggle = Drone.TOGGLE_OFF
         
     def send_aux3_mid(self):
         data = [self.curRoll, self.curPitch, self.curYaw, self.curThrottle, 0, self.curAux2, 1500, 0]
         data_len = len(data) * 2
         self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
         self.curAux3 = 1500
-        self.aux3_toggle = TOGGLE_OFF
+        self.aux3_toggle = Drone.TOGGLE_OFF
     
     def send_aux3_hi(self):
         data = [self.curRoll, self.curPitch, self.curYaw, self.curThrottle, 0, self.curAux3, 2000, 0]
         data_len = len(data) * 2
         self.board.sendCMD(data_len, MultiWii.SET_RAW_RC, data)
         self.curAux3 = 2000
-        self.aux3_toggle = TOGGLE_ON
+        self.aux3_toggle = Drone.TOGGLE_ON
 
 
     # In[ ]:
@@ -530,46 +533,46 @@ class Drone:
                     print('pitch changed to ', value)
                 elif operator == 'BTN_SOUTH':
                     # ARM - button A
-                    if value == BTN_PRESSED:
+                    if value == Drone.BTN_PRESSED:
                         self.arm_condition = True
                         self.arm()
                         print('arm signal start')
-                    elif value == BTN_RELEASED:
+                    elif value == Drone.BTN_RELEASED:
                         self.arm_condition = False
                         print('arm end')
                 elif operator == 'BTN_WEST':
                     # DISARM - button X
-                    if value == BTN_PRESSED:
+                    if value == Drone.BTN_PRESSED:
                         self.disarm_condition = True
                         self.disarm()
                         print('disarm signal start')
-                    elif value == BTN_RELEASED:
+                    elif value == Drone.BTN_RELEASED:
                         self.disarm_condition = False
                         print('disarm end')
                 elif operator == 'BTN_SELECT':
                     # Force fail safe - button Select (right)
-                    if value == BTN_PRESSED:
+                    if value == Drone.BTN_PRESSED:
                         self.stop_condition = True
                         print('stop signal start')
-                    elif value == BTN_RELEASED:
+                    elif value == Drone.BTN_RELEASED:
                         self.stop_condition = False
                         print('stop signal end')
                 elif operator == 'BTN_EAST':
                     # Aux2 - angle mode toggle
-                    if value == BTN_PRESSED:
-                        if self.aux2_toggle == TOGGLE_OFF:
+                    if value == Drone.BTN_PRESSED:
+                        if self.aux2_toggle == Drone.TOGGLE_OFF:
                             self.send_aux2_hi()
                             print('Aux2 is set to hi (Angle mode is on)')
-                        elif self.aux2_toggle == TOGGLE_ON:
+                        elif self.aux2_toggle == Drone.TOGGLE_ON:
                             self.send_aux2_lo()
                             print('Aux2 is set to lo (Angle mode is off)')
                 elif operator == 'BTN_NORTH':
                     # Aux3 - baro mode toggle
-                    if value == BTN_PRESSED:
-                        if self.aux3_toggle == TOGGLE_OFF:
+                    if value == Drone.BTN_PRESSED:
+                        if self.aux3_toggle == Drone.TOGGLE_OFF:
                             self.send_aux3_hi()
                             print('Aux3 is set to hi (Baro mode is on)')
-                        elif self.aux3_toggle == TOGGLE_ON:
+                        elif self.aux3_toggle == Drone.TOGGLE_ON:
                             self.send_aux3_lo()
                             print('Aux3 is set to lo (Baro mode is off)')
 
@@ -628,7 +631,7 @@ class Drone:
                 self.changeThrottle(newThrottle)
             timer = 0
             step += 1
-            if self.curThrottle <= MIN_THROTTLE:
+            if self.curThrottle <= Drone.MIN_THROTTLE:
                 break
 
         print('failsafe mode last step ', step, ' : throttle is min throttle now')
