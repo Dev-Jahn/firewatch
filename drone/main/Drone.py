@@ -15,7 +15,7 @@ import socket
 class Drone:
     
     MIN_COMMAND = 1000
-    MIN_THROTTLE = 1100
+    MIN_THROTTLE = 1050
     BTN_PRESSED = 1
     BTN_RELEASED = 0
     TOGGLE_ON = 1
@@ -407,8 +407,8 @@ class Drone:
         self.curPitch = power
 
     def change_yaw(self, power):
-        if power < 1000:
-            power = 1000
+        if power <= 1000:
+            power = 1001
         elif power > 2000:
             power = 2000
 
