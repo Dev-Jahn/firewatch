@@ -515,7 +515,7 @@ class Drone:
             if content == 'OK':
                 self.fail_condition = False
                 self.last_comm_time = time.time()
-            elif not content == 'OK' and self.fail_condition == False:
+            elif (not content == 'OK') and self.fail_condition == False:
                 content = content.split(':')
 
                 operator = content[0]
